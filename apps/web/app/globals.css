@@ -1,26 +1,69 @@
 @import "tailwindcss";
 
+/*
+ * Theme tokens — "serika-dark" inspired by Monkeytype's default theme.
+ * These are real CSS custom properties at runtime, so swapping the theme
+ * later is just rewriting these values (no rebuild needed).
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --color-bg: #323437;
+  --color-text: #d1d0c5;
+  --color-sub: #646669;
+  --color-sub-alt: #2c2e31;
+  --color-main: #e2b714;
+  --color-error: #ca4754;
+  --color-error-extra: #7e2a33;
+  --color-caret: var(--color-main);
 }
 
+/*
+ * Expose the variables as Tailwind v4 design tokens. The `inline` keyword
+ * tells Tailwind to keep them as `var(--color-X)` references (not inline
+ * the literal hex), so live theme switching keeps working.
+ */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-bg: var(--color-bg);
+  --color-text: var(--color-text);
+  --color-sub: var(--color-sub);
+  --color-sub-alt: var(--color-sub-alt);
+  --color-main: var(--color-main);
+  --color-error: var(--color-error);
+  --color-error-extra: var(--color-error-extra);
+  --color-caret: var(--color-caret);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html, body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* The typing area gets a custom caret behavior — hide the native one */
+.typing-area {
+  caret-color: transparent;
+  outline: none;
+}
+
+/* Animated caret used by TypingArea — moves via transform for 60fps */
+.caret {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 2px;
+  background: var(--color-caret);
+  transition: transform 90ms ease-out;
+  will-change: transform;
+}
+
+@keyframes caret-blink {
+  0%, 50%   { opacity: 1; }
+  50.01%, 100% { opacity: 0; }
+}
+
+.caret--idle {
+  animation: caret-blink 1s steps(1) infinite;
 }

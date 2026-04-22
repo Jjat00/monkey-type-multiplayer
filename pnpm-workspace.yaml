@@ -2,6 +2,16 @@ packages:
   - "apps/*"
   - "packages/*"
 
-ignoredBuiltDependencies:
+# Explicit allowlist of packages whose install scripts (postinstall, etc.)
+# are allowed to run. pnpm 10 ignores them all by default for supply-chain
+# safety. Each entry here pulls in a native binary we actually need:
+#   - lightningcss / @tailwindcss/oxide : Tailwind v4 native CSS engine
+#   - workerd                          : Cloudflare Workers local runtime
+#   - esbuild                          : bundler used by wrangler dev
+#   - sharp                            : Next.js image optimization
+onlyBuiltDependencies:
+  - lightningcss
+  - "@tailwindcss/oxide"
+  - workerd
+  - esbuild
   - sharp
-  - unrs-resolver

@@ -6,7 +6,9 @@
   "exports": {
     ".": "./src/index.ts",
     "./protocol": "./src/protocol.ts",
-    "./room": "./src/room.ts"
+    "./room": "./src/room.ts",
+    "./textgen": "./src/textgen.ts",
+    "./wordlist": "./src/wordlist.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
