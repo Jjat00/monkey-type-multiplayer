@@ -78,27 +78,37 @@ export default function LobbyPage() {
       {conn.error && <p className="text-sm text-error">{conn.error}</p>}
 
       {status === 'lobby' && (
-        <LobbyView conn={conn} shareUrl={shareUrl} />
+        <div key="lobby" className="phase-in flex flex-col items-center gap-10">
+          <LobbyView conn={conn} shareUrl={shareUrl} />
+        </div>
       )}
 
-      {status === 'countdown' && <CountdownView seconds={conn.countdown} />}
+      {status === 'countdown' && (
+        <div key="countdown" className="phase-in">
+          <CountdownView seconds={conn.countdown} />
+        </div>
+      )}
 
       {status === 'racing' && conn.raceText !== null && (
-        <RaceView
-          text={conn.raceText}
-          players={conn.room?.players ?? []}
-          peers={conn.peers}
-          selfId={conn.selfId}
-          send={conn.send}
-        />
+        <div key="racing" className="phase-in w-full max-w-4xl">
+          <RaceView
+            text={conn.raceText}
+            players={conn.room?.players ?? []}
+            peers={conn.peers}
+            selfId={conn.selfId}
+            send={conn.send}
+          />
+        </div>
       )}
 
       {status === 'finished' && conn.results !== null && (
-        <ResultsView
-          results={conn.results}
-          selfId={conn.selfId}
-          onRematch={() => conn.send({ type: 'rematch' })}
-        />
+        <div key="finished" className="phase-in">
+          <ResultsView
+            results={conn.results}
+            selfId={conn.selfId}
+            onRematch={() => conn.send({ type: 'rematch' })}
+          />
+        </div>
       )}
 
       <button

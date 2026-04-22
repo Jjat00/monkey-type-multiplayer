@@ -1,6 +1,6 @@
 'use client';
 
-import { useLayoutEffect, useMemo, useRef } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CharStatus, EngineState, Metrics } from '@/lib/typing/engine';
 
 interface TypingAreaProps {
@@ -9,6 +9,11 @@ interface TypingAreaProps {
   /** When true, caret blinks (player idle); when false it stays solid (active). */
   isIdle: boolean;
 }
+
+/** How many lines the typing window shows at once before the text starts scrolling. */
+const VISIBLE_LINES = 3;
+/** Which 0-indexed line the caret tries to stay on (1 = second line, Monkeytype style). */
+const ANCHOR_LINE = 1;
 
 /**
  * Group the text into word and space tokens so we can make each word an
@@ -44,8 +49,40 @@ function charClass(status: CharStatus | null): string {
 
 export function TypingArea({ state, metrics, isIdle }: TypingAreaProps) {
   const tokens = useMemo(() => tokenize(state.text), [state.text]);
+
   const containerRef = useRef<HTMLDivElement>(null);
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
   const charRefs = useRef<(HTMLSpanElement | null)[]>([]);
+
+  // Measure line-height once after first render. Using state (not just a ref)
+  // because the scroller's `height` style depends on it for the first paint.
+  const [lineHeight, setLineHeight] = useState(48);
+
+  useLayoutEffect(() => {
+    const inner = innerRef.current;
+    if (!inner) return;
+    const computed = parseFloat(getComputedStyle(inner).lineHeight);
+    if (Number.isFinite(computed) && computed > 0) {
+      setLineHeight(computed);
+    }
+  }, []);
+
+  // Translate the inner wrapper so the caret line ends up at ANCHOR_LINE.
+  // Runs every render (no deps) — cheap measurements, no React state derived.
+  useLayoutEffect(() => {
+    const inner = innerRef.current;
+    const target = charRefs.current[state.position] ?? charRefs.current[state.position - 1];
+    if (!inner || !target) {
+      if (inner) inner.style.transform = 'translateY(0)';
+      return;
+    }
+    // offsetTop is relative to the closest positioned ancestor (inner here),
+    // so dividing by lineHeight gives us the line index the char sits on.
+    const caretLine = Math.round(target.offsetTop / lineHeight);
+    const scroll = Math.max(0, (caretLine - ANCHOR_LINE) * lineHeight);
+    inner.style.transform = `translateY(-${scroll}px)`;
+  });
 
   return (
     <div className="w-full max-w-4xl">
@@ -56,29 +93,37 @@ export function TypingArea({ state, metrics, isIdle }: TypingAreaProps) {
         className="typing-area relative font-mono text-3xl leading-relaxed select-none"
         tabIndex={0}
       >
-        {tokens.map((tok, i) =>
-          tok.kind === 'word' ? (
-            <span key={`w-${i}`} className="inline-block whitespace-nowrap">
-              {tok.chars.map(({ char, pos }) => (
-                <span
-                  key={pos}
-                  ref={(el) => { charRefs.current[pos] = el; }}
-                  className={charClass(state.status[pos] ?? null)}
-                >
-                  {char}
+        <div
+          ref={scrollerRef}
+          className="typing-scroller"
+          style={{ height: `${lineHeight * VISIBLE_LINES}px` }}
+        >
+          <div ref={innerRef} className="typing-scroller-inner">
+            {tokens.map((tok, i) =>
+              tok.kind === 'word' ? (
+                <span key={`w-${i}`} className="inline-block whitespace-nowrap">
+                  {tok.chars.map(({ char, pos }) => (
+                    <span
+                      key={pos}
+                      ref={(el) => { charRefs.current[pos] = el; }}
+                      className={charClass(state.status[pos] ?? null)}
+                    >
+                      {char}
+                    </span>
+                  ))}
                 </span>
-              ))}
-            </span>
-          ) : (
-            <span
-              key={`s-${tok.pos}`}
-              ref={(el) => { charRefs.current[tok.pos] = el; }}
-              className={charClass(state.status[tok.pos] ?? null)}
-            >
-              {' '}
-            </span>
-          ),
-        )}
+              ) : (
+                <span
+                  key={`s-${tok.pos}`}
+                  ref={(el) => { charRefs.current[tok.pos] = el; }}
+                  className={charClass(state.status[tok.pos] ?? null)}
+                >
+                  {' '}
+                </span>
+              ),
+            )}
+          </div>
+        </div>
 
         <Caret
           containerRef={containerRef}
@@ -106,6 +151,10 @@ function Caret({ containerRef, targetEl, isIdle, isFinished }: CaretProps) {
    * render and write directly to style — no setState, no re-render trigger,
    * so this effect is safe without a deps array (cheap getBoundingClientRect
    * calls that never feed back into React's update cycle).
+   *
+   * Because targetEl lives inside the translated scroller-inner, its
+   * bounding rect already accounts for the translation — the caret follows
+   * the target visually as the text scrolls.
    */
   useLayoutEffect(() => {
     const caret = caretRef.current;

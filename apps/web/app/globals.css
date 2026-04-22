@@ -48,6 +48,37 @@ html, body {
   outline: none;
 }
 
+/*
+ * Monkeytype-style scrolling text. The scroller has a fixed height (set
+ * inline based on measured line-height) and clips overflow. The inner
+ * wrapper is translated vertically so the caret line stays anchored.
+ *
+ * The mask-image fades the top and bottom edges so lines smoothly
+ * appear/disappear instead of cutting hard against the container border.
+ */
+.typing-scroller {
+  overflow: hidden;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 14%,
+    black 86%,
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 14%,
+    black 86%,
+    transparent 100%
+  );
+}
+
+.typing-scroller-inner {
+  transition: transform 200ms ease-out;
+  will-change: transform;
+}
+
 /* Animated caret used by TypingArea — moves via transform for 60fps */
 .caret {
   position: absolute;
@@ -66,4 +97,24 @@ html, body {
 
 .caret--idle {
   animation: caret-blink 1s steps(1) infinite;
+}
+
+/*
+ * Phase transition: a subtle fade + lift used when switching between
+ * lobby / countdown / race / results panels. CSS animations re-fire on
+ * every mount, so combining `key={phase}` in React with this class gives
+ * a clean transition without an animation library.
+ */
+@keyframes phase-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.phase-in {
+  animation: phase-in 240ms ease-out;
+}
+
+/* Used inside the typing area where vertical translate would jiggle the caret */
+.fade-in {
+  animation: phase-in 240ms ease-out;
 }
