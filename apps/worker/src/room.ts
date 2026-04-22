@@ -1,11 +1,16 @@
 import { DurableObject } from 'cloudflare:workers';
-import type {
-  ClientMessage,
-  PlayerPublic,
-  RoomPublic,
-  RoomStatus,
-  ServerMessage,
+import {
+  COUNTDOWN_SECONDS,
+  generateText,
+  type ClientMessage,
+  type PlayerPublic,
+  type RaceResult,
+  type RoomPublic,
+  type RoomStatus,
+  type ServerMessage,
 } from '@monkey-type/shared';
+
+const RACE_WORD_COUNT = 25;
 
 /**
  * Per-player state held in the DO. Keyed by the WebSocket instance because
@@ -23,6 +28,10 @@ interface PlayerInternal {
   wpm: number;
   errors: number;
   finishedAt: number | null;
+  /** Race time in ms reported by the client's `finish` message. */
+  timeMs: number | null;
+  /** Final accuracy from the client's `finish` message. */
+  accuracy: number | null;
 }
 
 export class Room extends DurableObject<Env> {
@@ -31,6 +40,7 @@ export class Room extends DurableObject<Env> {
   private text: string | null = null;
   private startedAt: number | null = null;
   private code: string | null = null;
+  private countdownTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -39,8 +49,8 @@ export class Room extends DurableObject<Env> {
     );
 
     // Recover player state after hibernation: any WebSocket the runtime kept
-    // alive comes back to us via getWebSockets(), and the attachment we stored
-    // when the player joined gets us back the data.
+    // alive comes back via getWebSockets(), and the attachment we stored on
+    // join gets us back the player data.
     for (const ws of this.ctx.getWebSockets()) {
       const data = ws.deserializeAttachment() as PlayerInternal | null;
       if (data) this.players.set(ws, data);
@@ -48,8 +58,6 @@ export class Room extends DurableObject<Env> {
   }
 
   override async fetch(request: Request): Promise<Response> {
-    // Capture the room code from the URL the very first time. The Worker
-    // routes /room/CODE/ws to this DO; the URL is preserved through the stub.
     if (this.code === null) {
       const m = new URL(request.url).pathname.match(/\/room\/([A-Z0-9]+)\/ws$/i);
       if (m) this.code = m[1]!.toUpperCase();
@@ -82,28 +90,40 @@ export class Room extends DurableObject<Env> {
         return this.handleJoin(ws, msg.nickname);
       case 'ready':
         return this.handleReady(ws, msg.ready);
-      // Phase 3b will implement these:
       case 'progress':
+        return this.handleProgress(ws, msg);
       case 'finish':
+        return this.handleFinish(ws, msg);
       case 'rematch':
-        return;
+        return this.handleRematch(ws);
     }
   }
 
   override async webSocketClose(ws: WebSocket): Promise<void> {
-    if (this.players.delete(ws)) {
-      this.broadcastRoomState();
-    }
+    this.removePlayer(ws);
   }
 
   override async webSocketError(ws: WebSocket): Promise<void> {
-    if (this.players.delete(ws)) {
-      this.broadcastRoomState();
+    this.removePlayer(ws);
+  }
+
+  private removePlayer(ws: WebSocket): void {
+    if (!this.players.delete(ws)) return;
+
+    if (this.players.size === 0) {
+      this.resetToLobby();
+      return;
+    }
+
+    this.broadcastRoomState();
+
+    // If we were racing and the leaver was the last unfinished player, end the race.
+    if (this.status === 'racing') {
+      this.maybeEndRace();
     }
   }
 
   private handleJoin(ws: WebSocket, rawNickname: string): void {
-    // Idempotent: re-joining (e.g. after a reconnect) doesn't create duplicates.
     if (this.players.has(ws)) return;
 
     const player: PlayerInternal = {
@@ -114,27 +134,199 @@ export class Room extends DurableObject<Env> {
       wpm: 0,
       errors: 0,
       finishedAt: null,
+      timeMs: null,
+      accuracy: null,
     };
     this.players.set(ws, player);
     ws.serializeAttachment(player);
 
-    // Tell the joining player their own id + the full room snapshot.
     this.send(ws, {
       type: 'joined',
       playerId: player.id,
       room: this.snapshot(),
     });
-    // Tell everyone else there's a new player.
+
+    // Late-joiner during a race: also push the start info so they can race too.
+    if (this.status === 'racing' && this.text !== null && this.startedAt !== null) {
+      this.send(ws, { type: 'start', startedAt: this.startedAt, text: this.text });
+    }
+
     this.broadcastRoomState(ws);
   }
 
   private handleReady(ws: WebSocket, ready: boolean): void {
+    // Ready toggles only matter in the lobby — ignore otherwise so a stray
+    // click during countdown/race doesn't corrupt state.
+    if (this.status !== 'lobby') return;
+
     const player = this.players.get(ws);
     if (!player) return;
     if (player.ready === ready) return;
 
     player.ready = ready;
     ws.serializeAttachment(player);
+    this.broadcastRoomState();
+
+    // Auto-start when every connected player is ready (≥1 player).
+    const allReady = Array.from(this.players.values()).every((p) => p.ready);
+    if (allReady) this.startCountdown();
+  }
+
+  private startCountdown(): void {
+    this.status = 'countdown';
+    this.broadcastRoomState();
+
+    let secondsLeft = COUNTDOWN_SECONDS;
+
+    const tick = (): void => {
+      // Bail if something canceled the countdown (e.g. everyone disconnected).
+      if (this.status !== 'countdown') return;
+
+      this.broadcast({ type: 'countdown', secondsLeft });
+
+      if (secondsLeft === 0) {
+        this.startRace();
+        return;
+      }
+      secondsLeft--;
+      this.countdownTimer = setTimeout(tick, 1000);
+    };
+
+    tick();
+  }
+
+  private startRace(): void {
+    this.countdownTimer = null;
+    this.text = generateText(RACE_WORD_COUNT);
+    this.startedAt = Date.now();
+    this.status = 'racing';
+
+    // Reset per-race stats for everyone before announcing the start.
+    for (const [ws, p] of this.players) {
+      p.charIndex = 0;
+      p.wpm = 0;
+      p.errors = 0;
+      p.finishedAt = null;
+      p.timeMs = null;
+      p.accuracy = null;
+      ws.serializeAttachment(p);
+    }
+
+    // Send `start` BEFORE `room_state` so clients have the text in hand by
+    // the time they see status='racing' and try to render the typing area.
+    this.broadcast({ type: 'start', startedAt: this.startedAt, text: this.text });
+    this.broadcastRoomState();
+  }
+
+  private handleProgress(
+    ws: WebSocket,
+    msg: { charIndex: number; errors: number; wpm: number },
+  ): void {
+    if (this.status !== 'racing') return;
+    const player = this.players.get(ws);
+    if (!player || player.finishedAt !== null) return;
+
+    player.charIndex = clampInt(msg.charIndex, 0, this.text?.length ?? 0);
+    player.errors = Math.max(0, Math.floor(msg.errors));
+    player.wpm = Math.max(0, Math.floor(msg.wpm));
+    // Skip serializeAttachment here — progress is high-frequency and recovery
+    // can rebuild it from the next tick. Avoids unnecessary disk writes.
+
+    const payload = JSON.stringify({
+      type: 'peer_progress',
+      playerId: player.id,
+      charIndex: player.charIndex,
+      wpm: player.wpm,
+    } satisfies ServerMessage);
+
+    for (const peerWs of this.players.keys()) {
+      if (peerWs === ws) continue;
+      try { peerWs.send(payload); } catch { /* ignore */ }
+    }
+  }
+
+  private handleFinish(
+    ws: WebSocket,
+    msg: { timeMs: number; wpm: number; accuracy: number },
+  ): void {
+    if (this.status !== 'racing') return;
+    const player = this.players.get(ws);
+    if (!player || player.finishedAt !== null) return;
+
+    player.finishedAt = Date.now();
+    player.timeMs = Math.max(1, Math.floor(msg.timeMs));
+    player.wpm = Math.max(0, Math.floor(msg.wpm));
+    player.accuracy = Math.max(0, Math.min(100, msg.accuracy));
+    if (this.text !== null) player.charIndex = this.text.length;
+    ws.serializeAttachment(player);
+
+    this.broadcastRoomState();
+    this.maybeEndRace();
+  }
+
+  private maybeEndRace(): void {
+    if (this.status !== 'racing') return;
+    const allFinished = Array.from(this.players.values()).every(
+      (p) => p.finishedAt !== null,
+    );
+    if (allFinished) this.endRace();
+  }
+
+  private endRace(): void {
+    this.status = 'finished';
+
+    // Rank: finishers ahead of DNFs; among finishers, faster time first;
+    // among DNFs, higher wpm first as a courtesy ordering.
+    const results: RaceResult[] = Array.from(this.players.values())
+      .map((p) => ({
+        playerId: p.id,
+        nickname: p.nickname,
+        finished: p.finishedAt !== null,
+        timeMs: p.timeMs ?? 0,
+        wpm: p.wpm,
+        accuracy: p.accuracy ?? 0,
+        rank: 0,
+      }))
+      .sort((a, b) => {
+        if (a.finished !== b.finished) return a.finished ? -1 : 1;
+        if (a.finished) return a.timeMs - b.timeMs;
+        return b.wpm - a.wpm;
+      });
+
+    results.forEach((r, i) => { r.rank = i + 1; });
+
+    this.broadcast({ type: 'race_end', results });
+    this.broadcastRoomState();
+  }
+
+  private handleRematch(ws: WebSocket): void {
+    // Only meaningful once a race has ended; first request wins, rest no-op.
+    if (this.status !== 'finished') return;
+    this.resetToLobby();
+    // The requester's click is an implicit "I want another round" — mark them
+    // ready immediately. If they're alone in the room this also auto-starts
+    // the next countdown (handleReady runs the all-ready check).
+    this.handleReady(ws, true);
+  }
+
+  private resetToLobby(): void {
+    if (this.countdownTimer !== null) {
+      clearTimeout(this.countdownTimer);
+      this.countdownTimer = null;
+    }
+    this.status = 'lobby';
+    this.text = null;
+    this.startedAt = null;
+    for (const [ws, p] of this.players) {
+      p.ready = false;
+      p.charIndex = 0;
+      p.wpm = 0;
+      p.errors = 0;
+      p.finishedAt = null;
+      p.timeMs = null;
+      p.accuracy = null;
+      ws.serializeAttachment(p);
+    }
     this.broadcastRoomState();
   }
 
@@ -156,9 +348,18 @@ export class Room extends DurableObject<Env> {
     }
   }
 
-  /** Broadcast room_state to all connected players (optionally excluding one). */
+  private broadcast(msg: ServerMessage): void {
+    const payload = JSON.stringify(msg);
+    for (const ws of this.players.keys()) {
+      try { ws.send(payload); } catch { /* ignore */ }
+    }
+  }
+
   private broadcastRoomState(except?: WebSocket): void {
-    const payload = JSON.stringify({ type: 'room_state', room: this.snapshot() } satisfies ServerMessage);
+    const payload = JSON.stringify({
+      type: 'room_state',
+      room: this.snapshot(),
+    } satisfies ServerMessage);
     for (const ws of this.players.keys()) {
       if (ws === except) continue;
       try { ws.send(payload); } catch { /* ignore */ }
@@ -181,4 +382,12 @@ function toPlayerPublic(p: PlayerInternal): PlayerPublic {
 function sanitizeNickname(input: string): string {
   const trimmed = (input ?? '').trim().slice(0, 20);
   return trimmed.length > 0 ? trimmed : 'guest';
+}
+
+function clampInt(n: number, lo: number, hi: number): number {
+  if (!Number.isFinite(n)) return lo;
+  const v = Math.floor(n);
+  if (v < lo) return lo;
+  if (v > hi) return hi;
+  return v;
 }
