@@ -1,0 +1,43 @@
+# deps
+node_modules/
+.pnpm-store/
+
+# build
+dist/
+build/
+.next/
+.turbo/
+out/
+.open-next/
+.wrangler/
+
+# env
+.env
+.env.local
+.env.*.local
+.dev.vars
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# editor
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# claude code local state
+.claude/
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# coverage
+coverage/
+.nyc_output/

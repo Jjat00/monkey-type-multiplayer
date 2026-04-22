@@ -1,0 +1,23 @@
+{
+  "name": "monkey-type-multiplayer",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Multiplayer typing race inspired by Monkeytype",
+  "type": "module",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "clean": "turbo run clean && rm -rf node_modules"
+  },
+  "packageManager": "pnpm@10.32.1",
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "turbo": "^2.9.6",
+    "typescript": "^6.0.3"
+  }
+}

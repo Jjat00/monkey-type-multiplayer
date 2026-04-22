@@ -1,0 +1,14 @@
+{
+  "name": "@monkey-type/shared",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./protocol": "./src/protocol.ts",
+    "./room": "./src/room.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}
