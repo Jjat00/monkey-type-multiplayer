@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { generateText } from '@monkey-type/shared/textgen';
 import { TypingArea } from '@/components/TypingArea';
@@ -63,9 +64,15 @@ function Race({ text, onNewText }: { text: string; onNewText: () => void }) {
         <TypingArea state={state} metrics={metrics} isIdle={!isActive} />
       )}
 
-      <p className="font-mono text-sm text-sub">
-        press <Kbd>tab</Kbd> for a new text
-      </p>
+      <div className="flex flex-col items-center gap-3 font-mono text-sm text-sub">
+        <p>press <Kbd>tab</Kbd> for a new text</p>
+        <Link
+          href="/play"
+          className="text-sub underline-offset-4 hover:text-main hover:underline"
+        >
+          play with friends →
+        </Link>
+      </div>
     </main>
   );
 }
