@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# @monkey-type/web
 
-## Getting Started
+Frontend Next.js 16 de [`monkey-type-multiplayer`](../../README.md). App Router, React 19, Tailwind v4.
 
-First, run the development server:
+> 📚 Para arquitectura, decisiones técnicas y guía completa de desarrollo, ver el [README raíz del repo](../../README.md).
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Estructura
+
+```
+app/
+  page.tsx              # Solo-practice (/)
+  play/
+    page.tsx            # Lobby landing (/play)
+    [code]/page.tsx     # Sala multijugador (/play/XXXXX)
+components/
+  TypingArea.tsx        # Texto, caret, HUD de métricas
+lib/
+  typing/
+    engine.ts           # Máquina de estados pura (sin React)
+    useTypingEngine.ts  # Hook con keyboard listener global
+  room/
+    code.ts             # Generador de códigos de sala (32-char alphabet)
+    useRoomConnection.ts # Hook WebSocket con state management
+  storage/
+    nickname.ts         # localStorage helper
+  config.ts             # WORKER_WS_URL desde NEXT_PUBLIC_WORKER_WS_URL
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Comandos
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Desde la raíz del monorepo:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+pnpm dev                              # Web en :3000 + worker en :8787
+pnpm --filter @monkey-type/web dev    # Solo el web
+pnpm --filter @monkey-type/web build  # Build de producción
+pnpm --filter @monkey-type/web lint   # ESLint
+```
 
-## Learn More
+## Variables de entorno
 
-To learn more about Next.js, take a look at the following resources:
+Crea `.env.local` (existe `.env.local.example` como plantilla):
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+NEXT_PUBLIC_WORKER_WS_URL=ws://localhost:8787      # dev
+# NEXT_PUBLIC_WORKER_WS_URL=wss://...workers.dev   # prod
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+`NEXT_PUBLIC_*` se inlinea al bundle del cliente en build-time. Si la cambias, hay que rebuildear.
 
-## Deploy on Vercel
+## Notas de diseño
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Sin SSR para `/play/[code]`**: el lobby es enteramente client-side (`'use client'`) porque depende de WebSockets, `localStorage` y `crypto.getRandomValues`. Hidratación en dos fases para evitar SSR/CSR mismatch del nickname.
+- **Tema serika dark** definido como CSS custom properties en `app/globals.css` y expuesto a Tailwind con `@theme inline`. Preparado para theme switcher futuro (Fase 4).
+- **`useTypingEngine`** usa `useRef` para mutar el state del motor sin pasar por `setState`, evitando que React 18 batchee y pierda keystrokes a >100 wpm.
+- **Reglas estrictas de `react-hooks` v6** (`purity`, `refs`, `set-state-in-effect`) están desactivadas en `eslint.config.mjs` con justificación documentada.
