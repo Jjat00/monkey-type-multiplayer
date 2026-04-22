@@ -8,13 +8,21 @@ Frontend Next.js 16 de [`monkey-type-multiplayer`](../../README.md). App Router,
 
 ```
 app/
+  layout.tsx            # ThemeProvider + Header global + no-flash script
+  globals.css           # CSS vars por tema, scroller, caret animation
   page.tsx              # Solo-practice (/)
   play/
     page.tsx            # Lobby landing (/play)
     [code]/page.tsx     # Sala multijugador (/play/XXXXX)
 components/
-  TypingArea.tsx        # Texto, caret, HUD de métricas
+  Header.tsx            # Nav global (solo/multi) + theme switcher dropdown
+  TypingArea.tsx        # Texto + scroller estilo Monkeytype + caret + HUD
 lib/
+  theme/
+    themes.ts           # 5 paletas (serika-dark, serika-light, nord, dracula, gruvbox-dark)
+    storage.ts          # getStoredTheme, setStoredTheme, applyTheme
+    ThemeProvider.tsx   # Context + useTheme hook
+    noFlashScript.ts    # Inline blocking script para evitar FOUT
   typing/
     engine.ts           # Máquina de estados pura (sin React)
     useTypingEngine.ts  # Hook con keyboard listener global
@@ -51,6 +59,9 @@ NEXT_PUBLIC_WORKER_WS_URL=ws://localhost:8787      # dev
 ## Notas de diseño
 
 - **Sin SSR para `/play/[code]`**: el lobby es enteramente client-side (`'use client'`) porque depende de WebSockets, `localStorage` y `crypto.getRandomValues`. Hidratación en dos fases para evitar SSR/CSR mismatch del nickname.
-- **Tema serika dark** definido como CSS custom properties en `app/globals.css` y expuesto a Tailwind con `@theme inline`. Preparado para theme switcher futuro (Fase 4).
+- **Theme system con 5 paletas** (`lib/theme/`): cambia las CSS custom properties del `<html>` en runtime; las utilidades Tailwind (`bg-bg`, `text-main`, etc.) se actualizan en vivo gracias al `@theme inline` de `globals.css`. El `noFlashScript` inline en `<head>` aplica el tema guardado antes de hidratar para evitar FOUT.
+- **Header fijo** (`components/Header.tsx`) overlay sobre el contenido con `bg/90 + backdrop-blur` — no participa del flow para no romper el `min-h-dvh + justify-center` de las pages.
+- **Texto que scrollea estilo Monkeytype**: el `TypingArea` mide `lineHeight` post-mount, fija el container a 3 líneas con `overflow:hidden + mask-image gradient`, y traslada el wrapper interno con `translateY` para mantener el caret en la línea 2 (anchored).
+- **Atajos**: `Tab` o `Esc` en `/` generan un texto nuevo; `Esc` también cierra el theme switcher.
 - **`useTypingEngine`** usa `useRef` para mutar el state del motor sin pasar por `setState`, evitando que React 18 batchee y pierda keystrokes a >100 wpm.
 - **Reglas estrictas de `react-hooks` v6** (`purity`, `refs`, `set-state-in-effect`) están desactivadas en `eslint.config.mjs` con justificación documentada.

@@ -25,10 +25,11 @@ export default function Home() {
     newText();
   }, [newText]);
 
-  // Tab key globally restarts (Monkeytype convention).
+  // Tab restarts (Monkeytype convention); Esc also restarts as an
+  // alternative that doesn't fight with browser focus rings on Tab.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Tab') {
+      if (e.key === 'Tab' || e.key === 'Escape') {
         e.preventDefault();
         newText();
       }
@@ -65,7 +66,7 @@ function Race({ text, onNewText }: { text: string; onNewText: () => void }) {
       )}
 
       <div className="flex flex-col items-center gap-3 font-mono text-sm text-sub">
-        <p>press <Kbd>tab</Kbd> for a new text</p>
+        <p>press <Kbd>tab</Kbd> or <Kbd>esc</Kbd> for a new text</p>
         <Link
           href="/play"
           className="text-sub underline-offset-4 hover:text-main hover:underline"

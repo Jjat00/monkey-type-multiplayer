@@ -23,13 +23,22 @@
 
 ## Características
 
-- ⚡ **Solo-practice** sin login en `/` — empieza a tipear inmediatamente. `Tab` genera un texto nuevo.
+- ⚡ **Solo-practice** sin login en `/` — empieza a tipear inmediatamente. `Tab` o `Esc` generan un texto nuevo.
 - 👥 **Multijugador con código de sala** en `/play` — crea o únete a una sala con un código de 5 caracteres.
 - 🏁 **Sincronización en tiempo real** vía WebSockets — el texto, el countdown y el progreso de los rivales se ven en vivo.
 - 📊 **Métricas estilo Monkeytype** — WPM (palabras por minuto), raw WPM, accuracy, tiempo total, ranking final.
 - 🔄 **Rematch instantáneo** — al terminar, "next race" reinicia la carrera con un clic.
-- 🎨 **Paleta serika dark** por defecto — la firma visual de Monkeytype.
+- 🎨 **5 temas** — serika-dark (default), serika-light, nord, dracula, gruvbox-dark. Cambio en vivo + persistencia local.
+- 📜 **Texto que scrollea** — el caret se ancla en la segunda línea del viewport y el texto fluye estilo Monkeytype, con fade en bordes.
+- ✨ **Transiciones suaves** — fade entre lobby ↔ countdown ↔ race ↔ results.
 - ♻️ **Estado autoritativo en el server** — el texto, el reloj y el ranking los decide el Durable Object, no el cliente. Imposible hacer trampa cambiando el reloj local.
+
+### Atajos de teclado
+
+| Tecla | Contexto | Acción |
+|---|---|---|
+| `Tab` o `Esc` | Solo-practice (`/`) | Genera un texto nuevo |
+| `Esc` | Theme switcher abierto | Cierra el dropdown |
 
 ---
 
@@ -81,7 +90,7 @@ Cada sala es **un único DO** identificado por el código de sala (`getByName(ro
 | Frontend framework | **Next.js 16** (App Router, RSC) | SSR + client components con división automática de bundles |
 | UI runtime | **React 19** | Concurrency y compatibilidad con Next 16 |
 | Tipado | **TypeScript 6** estricto (`noUncheckedIndexedAccess`, `verbatimModuleSyntax`) | Catch errors en build, no en runtime |
-| Estilos | **Tailwind CSS v4** + CSS custom properties | Tokens de tema cambiables en runtime (preparado para theme switcher) |
+| Estilos | **Tailwind CSS v4** + CSS custom properties | Tokens de tema cambiables en runtime — alimenta el theme switcher (5 paletas) |
 | Backend realtime | **Cloudflare Workers** + **Durable Objects** | WebSockets nativos en el edge, una instancia consistente por sala |
 | Persistencia DO | **SQLite-backed** (`new_sqlite_classes`) | Backend moderno y barato; el state de las salas es ephemeral, no persiste |
 | WebSocket | **Hibernation API** (`ctx.acceptWebSocket`) | Conexiones sobreviven hibernación del DO sin reconectar |
@@ -98,14 +107,22 @@ monkey-type-project/
 ├── apps/
 │   ├── web/                    # Next.js 16 client (Vercel)
 │   │   ├── app/
+│   │   │   ├── layout.tsx      # Root layout: ThemeProvider + Header + no-flash script
+│   │   │   ├── globals.css     # CSS vars por tema, scroller, caret animation
 │   │   │   ├── page.tsx        # Solo-practice (/)
 │   │   │   └── play/
 │   │   │       ├── page.tsx    # Lobby landing (/play)
 │   │   │       └── [code]/
 │   │   │           └── page.tsx # Sala (/play/XXXXX)
 │   │   ├── components/
-│   │   │   └── TypingArea.tsx  # Texto + caret + métricas
+│   │   │   ├── Header.tsx      # Nav global + theme switcher dropdown
+│   │   │   └── TypingArea.tsx  # Texto + scroller + caret + métricas
 │   │   ├── lib/
+│   │   │   ├── theme/
+│   │   │   │   ├── themes.ts          # 5 paletas (serika-dark, nord, dracula…)
+│   │   │   │   ├── storage.ts         # localStorage + applyTheme()
+│   │   │   │   ├── ThemeProvider.tsx  # Context + useTheme hook
+│   │   │   │   └── noFlashScript.ts   # Inline script blocking en <head>
 │   │   │   ├── typing/
 │   │   │   │   ├── engine.ts          # Máquina de estados pura (sin React)
 │   │   │   │   └── useTypingEngine.ts # Hook con keyboard listener
@@ -275,9 +292,9 @@ curl https://monkey-type-worker.<tu-subdominio>.workers.dev/health
 | 2 | Solo-practice typing engine (state machine + caret + métricas) | ✅ |
 | 3a | Lobby multijugador (join/ready/disconnect en tiempo real) | ✅ |
 | 3b | Race lifecycle (countdown → race → results → next race) | ✅ |
-| 5 | Despliegue a producción (Cloudflare + Vercel) | ✅ |
-| 4 | Polish visual (theme switcher, transiciones, scrolling text) | ⏳ Próximo |
-| 6 | Stretch goals (custom domain, leaderboards, sounds, mobile UX) | 📋 Backlog |
+| 4 | Polish visual (theme switcher, header global, transiciones, scrolling text) | ✅ |
+| 5 | Despliegue a producción (Cloudflare + Vercel) con auto-deploy | ✅ |
+| 6 | Stretch goals (custom domain, leaderboards, sounds, mobile UX, tests) | 📋 Backlog |
 
 ---
 
@@ -309,6 +326,16 @@ curl https://monkey-type-worker.<tu-subdominio>.workers.dev/health
 - **`peer_progress`**: mensaje ligero (charIndex + wpm) cada 150ms por jugador. Alto throughput pero payload mínimo.
 
 Esto evita re-broadcastear el snapshot completo de la sala en cada keystroke, ahorrando bandwidth y CPU del DO.
+
+### Por qué el theme system usa CSS custom properties (no Tailwind dark mode)
+
+Tailwind solo soporta 2 modos (`dark:` prefix). Para 5+ temas necesitamos vars CSS — exactamente lo que tiene `globals.css`. Cambiar tema = sobrescribir `--color-*` en `<html>` → todas las utilidades Tailwind se actualizan sin re-renderizar React.
+
+Para evitar el "flash of default theme" cuando un usuario tiene un tema custom guardado, hay un **script inline blocking** en `<head>` (`lib/theme/noFlashScript.ts`) que lee `localStorage` y aplica las vars antes de que React hidrate. Es el mismo patrón que usa `next-themes`. Tradeoff: ~1KB inline en cada response, eliminado el flash visual.
+
+### Por qué el caret vive fuera del scroller del texto
+
+El `TypingArea` usa un wrapper interno con `transform: translateY(...)` para scrollear texto estilo Monkeytype (caret anclado en línea 2). Si el caret estuviera dentro del wrapper, se traduciría junto con él (doble movement) y se clipearía por el `overflow: hidden` del scroller. Lo dejé fuera, en el container relative parent — su `getBoundingClientRect` sigue tracking el span target (que sí está dentro del wrapper traducido), así que el caret se posiciona correctamente sin clip.
 
 ### Por qué desactivamos algunas reglas de `react-hooks` v6
 
