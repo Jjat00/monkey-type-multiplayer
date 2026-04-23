@@ -16,10 +16,15 @@ app/
     [code]/page.tsx     # Sala multijugador (/play/XXXXX)
 components/
   Header.tsx            # Nav global (solo/multi) + theme switcher dropdown
-  TypingArea.tsx        # Texto + scroller estilo Monkeytype + caret + HUD
+  ConfigBar.tsx         # Solo-practice config: puntuación, mode words/time, cantidad
+  TypingArea.tsx        # Texto + scroller estilo Monkeytype + caret + HUD (incluye contador en time mode)
 lib/
+  settings/
+    types.ts            # Mode ('words'|'time'), WordCount, TimeSeconds, Settings
+    storage.ts          # localStorage con validación field-by-field
+    SettingsProvider.tsx # Context + useSettings hook
   theme/
-    themes.ts           # 5 paletas (serika-dark, serika-light, nord, dracula, gruvbox-dark)
+    themes.ts           # 5 paletas (dracula default, serika-dark, serika-light, nord, gruvbox-dark)
     storage.ts          # getStoredTheme, setStoredTheme, applyTheme
     ThemeProvider.tsx   # Context + useTheme hook
     noFlashScript.ts    # Inline blocking script para evitar FOUT
@@ -59,7 +64,8 @@ NEXT_PUBLIC_WORKER_WS_URL=ws://localhost:8787      # dev
 ## Notas de diseño
 
 - **Sin SSR para `/play/[code]`**: el lobby es enteramente client-side (`'use client'`) porque depende de WebSockets, `localStorage` y `crypto.getRandomValues`. Hidratación en dos fases para evitar SSR/CSR mismatch del nickname.
-- **Theme system con 5 paletas** (`lib/theme/`): cambia las CSS custom properties del `<html>` en runtime; las utilidades Tailwind (`bg-bg`, `text-main`, etc.) se actualizan en vivo gracias al `@theme inline` de `globals.css`. El `noFlashScript` inline en `<head>` aplica el tema guardado antes de hidratar para evitar FOUT.
+- **Theme system con 5 paletas** (`lib/theme/`): cambia las CSS custom properties del `<html>` en runtime; las utilidades Tailwind (`bg-bg`, `text-main`, etc.) se actualizan en vivo gracias al `@theme inline` de `globals.css`. El `noFlashScript` inline en `<head>` aplica el tema guardado antes de hidratar para evitar FOUT. Default theme: **dracula**.
+- **Settings de carrera** (`lib/settings/`) en solo-practice: modo `words` (10/25/50/100) o `time` (15/30/60s) y toggle de puntuación. Mismo patrón provider+storage que el theme. El `useTypingEngine` recibe `timeLimitSeconds` opcional y schedula un `setTimeout` desde el primer keystroke. En time mode el page genera 250 palabras de buffer (suficientes para 60s a >100wpm).
 - **Header fijo** (`components/Header.tsx`) overlay sobre el contenido con `bg/90 + backdrop-blur` — no participa del flow para no romper el `min-h-dvh + justify-center` de las pages.
 - **Texto que scrollea estilo Monkeytype**: el `TypingArea` mide `lineHeight` post-mount, fija el container a 3 líneas con `overflow:hidden + mask-image gradient`, y traslada el wrapper interno con `translateY` para mantener el caret en la línea 2 (anchored).
 - **Atajos**: `Tab` o `Esc` en `/` generan un texto nuevo; `Esc` también cierra el theme switcher.

@@ -8,6 +8,8 @@ interface TypingAreaProps {
   metrics: Metrics;
   /** When true, caret blinks (player idle); when false it stays solid (active). */
   isIdle: boolean;
+  /** Whole seconds left when running in time mode; null in words mode. */
+  timeRemaining?: number | null;
 }
 
 /** How many lines the typing window shows at once before the text starts scrolling. */
@@ -47,7 +49,7 @@ function charClass(status: CharStatus | null): string {
   return 'text-sub';
 }
 
-export function TypingArea({ state, metrics, isIdle }: TypingAreaProps) {
+export function TypingArea({ state, metrics, isIdle, timeRemaining = null }: TypingAreaProps) {
   const tokens = useMemo(() => tokenize(state.text), [state.text]);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -86,7 +88,11 @@ export function TypingArea({ state, metrics, isIdle }: TypingAreaProps) {
 
   return (
     <div className="w-full max-w-4xl">
-      <Hud metrics={metrics} started={state.startedAt !== null} />
+      <Hud
+        metrics={metrics}
+        started={state.startedAt !== null}
+        timeRemaining={timeRemaining}
+      />
 
       <div
         ref={containerRef}
@@ -177,10 +183,25 @@ function Caret({ containerRef, targetEl, isIdle, isFinished }: CaretProps) {
   );
 }
 
-function Hud({ metrics, started }: { metrics: Metrics; started: boolean }) {
+function Hud({
+  metrics, started, timeRemaining,
+}: {
+  metrics: Metrics;
+  started: boolean;
+  timeRemaining: number | null;
+}) {
+  // In time mode the countdown is the headline metric; wpm/acc are secondary.
+  // In words mode there's no countdown, so wpm stays the highlight.
+  const isTimeMode = timeRemaining !== null;
   return (
     <div className="mb-6 flex items-baseline gap-6 font-mono text-sub">
-      <span className="text-2xl text-main tabular-nums">
+      {isTimeMode && (
+        <span className="text-2xl text-main tabular-nums">
+          {timeRemaining}
+          <span className="ml-1 text-base text-sub">s</span>
+        </span>
+      )}
+      <span className={`tabular-nums ${isTimeMode ? 'text-base' : 'text-2xl text-main'}`}>
         {started ? metrics.wpm : '—'}
         <span className="ml-1 text-base text-sub">wpm</span>
       </span>

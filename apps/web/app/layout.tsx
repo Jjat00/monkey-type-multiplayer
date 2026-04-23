@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/Header";
+import { SettingsProvider } from "@/lib/settings/SettingsProvider";
 import { ThemeProvider } from "@/lib/theme/ThemeProvider";
 import { buildNoFlashScript } from "@/lib/theme/noFlashScript";
 
@@ -43,8 +44,10 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col">
         <ThemeProvider>
-          <Header />
-          {children}
+          <SettingsProvider>
+            <Header />
+            {children}
+          </SettingsProvider>
         </ThemeProvider>
       </body>
     </html>

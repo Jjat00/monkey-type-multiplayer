@@ -27,8 +27,9 @@
 - 👥 **Multijugador con código de sala** en `/play` — crea o únete a una sala con un código de 5 caracteres.
 - 🏁 **Sincronización en tiempo real** vía WebSockets — el texto, el countdown y el progreso de los rivales se ven en vivo.
 - 📊 **Métricas estilo Monkeytype** — WPM (palabras por minuto), raw WPM, accuracy, tiempo total, ranking final.
+- 🛠 **Configuraciones de carrera** (solo-practice) — modo `words` (10/25/50/100) o modo `time` (15/30/60s), toggle de **puntuación**, persistencia en `localStorage`.
 - 🔄 **Rematch instantáneo** — al terminar, "next race" reinicia la carrera con un clic.
-- 🎨 **5 temas** — serika-dark (default), serika-light, nord, dracula, gruvbox-dark. Cambio en vivo + persistencia local.
+- 🎨 **5 temas** — dracula (default), serika-dark, serika-light, nord, gruvbox-dark. Cambio en vivo + persistencia local.
 - 📜 **Texto que scrollea** — el caret se ancla en la segunda línea del viewport y el texto fluye estilo Monkeytype, con fade en bordes.
 - ✨ **Transiciones suaves** — fade entre lobby ↔ countdown ↔ race ↔ results.
 - ♻️ **Estado autoritativo en el server** — el texto, el reloj y el ranking los decide el Durable Object, no el cliente. Imposible hacer trampa cambiando el reloj local.
@@ -116,10 +117,15 @@ monkey-type-project/
 │   │   │           └── page.tsx # Sala (/play/XXXXX)
 │   │   ├── components/
 │   │   │   ├── Header.tsx      # Nav global + theme switcher dropdown
+│   │   │   ├── ConfigBar.tsx   # Toggle puntuación + mode words/time + cantidad
 │   │   │   └── TypingArea.tsx  # Texto + scroller + caret + métricas
 │   │   ├── lib/
+│   │   │   ├── settings/
+│   │   │   │   ├── types.ts           # Mode, WordCount, TimeSeconds, Settings
+│   │   │   │   ├── storage.ts         # localStorage con validación por field
+│   │   │   │   └── SettingsProvider.tsx # Context + useSettings hook
 │   │   │   ├── theme/
-│   │   │   │   ├── themes.ts          # 5 paletas (serika-dark, nord, dracula…)
+│   │   │   │   ├── themes.ts          # 5 paletas (dracula default, serika-dark, nord…)
 │   │   │   │   ├── storage.ts         # localStorage + applyTheme()
 │   │   │   │   ├── ThemeProvider.tsx  # Context + useTheme hook
 │   │   │   │   └── noFlashScript.ts   # Inline script blocking en <head>

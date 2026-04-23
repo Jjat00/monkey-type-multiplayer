@@ -5,6 +5,7 @@ import {
   type EngineState,
   type Metrics,
   backspace,
+  finish,
   init,
   isFinished,
   metrics as computeMetrics,
@@ -22,6 +23,12 @@ interface UseTypingEngineOptions {
   progressIntervalMs?: number;
   /** When true, the engine ignores keystrokes (e.g. countdown phase). */
   paused?: boolean;
+  /**
+   * If set, the race ends after this many seconds from the first keystroke.
+   * Used by the time mode in solo-practice. The text should be long enough
+   * that the typist won't run out of words before the timer expires.
+   */
+  timeLimitSeconds?: number;
 }
 
 export interface ProgressSnapshot {
@@ -44,6 +51,7 @@ export function useTypingEngine({
   onFinish,
   progressIntervalMs = 150,
   paused = false,
+  timeLimitSeconds,
 }: UseTypingEngineOptions): HookReturn {
   /*
    * The engine state lives in a ref because we want to mutate it from a global
@@ -126,6 +134,34 @@ export function useTypingEngine({
     const id = setInterval(forceRender, 200);
     return () => clearInterval(id);
   }, [stateRef.current.startedAt, stateRef.current.finishedAt]);
+
+  // Time mode: end the race after timeLimitSeconds from the first keystroke.
+  // Re-runs whenever startedAt or the limit changes — startedAt is read from
+  // the ref because the engine state lives there; this is intentional.
+  useEffect(() => {
+    if (!timeLimitSeconds) return;
+    const startedAt = stateRef.current.startedAt;
+    if (startedAt === null) return;
+    if (stateRef.current.finishedAt !== null) return;
+
+    const fire = (): void => {
+      if (stateRef.current.finishedAt !== null) return;
+      const now = performance.now();
+      stateRef.current = finish(stateRef.current, now);
+      finishedFiredRef.current = true;
+      forceRender();
+      const snapshot = { state: stateRef.current, metrics: computeMetrics(stateRef.current, now) };
+      onFinish?.(snapshot);
+    };
+
+    const remaining = timeLimitSeconds * 1000 - (performance.now() - startedAt);
+    if (remaining <= 0) {
+      fire();
+      return;
+    }
+    const id = setTimeout(fire, remaining);
+    return () => clearTimeout(id);
+  }, [timeLimitSeconds, stateRef.current.startedAt, onFinish]);
 
   const state = stateRef.current;
   const metrics = computeMetrics(state, performance.now());

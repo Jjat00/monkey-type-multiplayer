@@ -67,7 +67,7 @@ export const THEMES = {
 
 export type ThemeName = keyof typeof THEMES;
 
-export const DEFAULT_THEME: ThemeName = 'serika-dark';
+export const DEFAULT_THEME: ThemeName = 'dracula';
 
 export const THEME_NAMES = Object.keys(THEMES) as ThemeName[];
 

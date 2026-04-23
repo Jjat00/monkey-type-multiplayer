@@ -86,6 +86,16 @@ export function typeChar(state: EngineState, char: string, now: number): EngineS
   };
 }
 
+/**
+ * Mark the race as finished without consuming the whole text. Used by the
+ * time-mode timer when the limit elapses — the typed slots up to that point
+ * still count for the WPM/accuracy metrics.
+ */
+export function finish(state: EngineState, now: number): EngineState {
+  if (state.finishedAt !== null) return state;
+  return { ...state, finishedAt: now };
+}
+
 /** Move the cursor back one position and clear that slot. No-op at position 0. */
 export function backspace(state: EngineState): EngineState {
   if (state.finishedAt !== null) return state;

@@ -3,12 +3,22 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { generateText } from '@monkey-type/shared/textgen';
+import { ConfigBar } from '@/components/ConfigBar';
 import { TypingArea } from '@/components/TypingArea';
+import { useSettings } from '@/lib/settings/SettingsProvider';
+import type { Settings } from '@/lib/settings/types';
 import { useTypingEngine } from '@/lib/typing/useTypingEngine';
 
-const WORDS_PER_RACE = 25;
+/**
+ * For time mode the engine still needs a finite text — we generate enough
+ * words that even a fast typist won't run out before the timer expires.
+ * 250 words at 100wpm ≈ 150s of typing, comfortable headroom for the 60s max.
+ */
+const TIME_MODE_BUFFER_WORDS = 250;
 
 export default function Home() {
+  const { settings } = useSettings();
+
   /*
    * Generating the text on the client (in an effect) avoids a hydration
    * mismatch — Math.random() during SSR would produce one text on the
@@ -18,9 +28,10 @@ export default function Home() {
   const [text, setText] = useState<string | null>(null);
 
   const newText = useCallback(() => {
-    setText(generateText(WORDS_PER_RACE));
-  }, []);
+    setText(makeText(settings));
+  }, [settings]);
 
+  // Regenerate when any relevant setting changes (mode, count, punctuation).
   useEffect(() => {
     newText();
   }, [newText]);
@@ -46,14 +57,29 @@ export default function Home() {
     );
   }
 
-  return <Race text={text} onNewText={newText} />;
+  return <Race text={text} settings={settings} onNewText={newText} />;
 }
 
-function Race({ text, onNewText }: { text: string; onNewText: () => void }) {
-  const { state, metrics, isActive } = useTypingEngine({ text });
+function makeText(settings: Settings): string {
+  const wordCount =
+    settings.mode === 'time' ? TIME_MODE_BUFFER_WORDS : settings.wordCount;
+  return generateText(wordCount, { punctuation: settings.punctuation });
+}
+
+function Race({
+  text, settings, onNewText,
+}: {
+  text: string;
+  settings: Settings;
+  onNewText: () => void;
+}) {
+  const { state, metrics, isActive } = useTypingEngine({
+    text,
+    timeLimitSeconds: settings.mode === 'time' ? settings.timeSeconds : undefined,
+  });
 
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center gap-12 px-6 py-10">
+    <main className="flex min-h-dvh flex-col items-center justify-center gap-10 px-6 py-10">
       {state.finishedAt !== null ? (
         <Results
           wpm={metrics.wpm}
@@ -62,7 +88,19 @@ function Race({ text, onNewText }: { text: string; onNewText: () => void }) {
           onRestart={onNewText}
         />
       ) : (
-        <TypingArea state={state} metrics={metrics} isIdle={!isActive} />
+        <>
+          <ConfigBar />
+          <TypingArea
+            state={state}
+            metrics={metrics}
+            isIdle={!isActive}
+            timeRemaining={
+              settings.mode === 'time'
+                ? computeTimeRemaining(state.startedAt, settings.timeSeconds)
+                : null
+            }
+          />
+        </>
       )}
 
       <div className="flex flex-col items-center gap-3 font-mono text-sm text-sub">
@@ -76,6 +114,16 @@ function Race({ text, onNewText }: { text: string; onNewText: () => void }) {
       </div>
     </main>
   );
+}
+
+/**
+ * Seconds left in the current race, or `limit` if not started yet, or 0 if
+ * past. Returned as a whole-second number — the HUD only shows integers.
+ */
+function computeTimeRemaining(startedAt: number | null, limit: number): number {
+  if (startedAt === null) return limit;
+  const remaining = Math.max(0, limit - (performance.now() - startedAt) / 1000);
+  return Math.ceil(remaining);
 }
 
 function Results({
