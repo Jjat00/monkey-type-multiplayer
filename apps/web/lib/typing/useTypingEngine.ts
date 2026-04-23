@@ -49,6 +49,12 @@ interface HookReturn {
   isActive: boolean;
   /** Reset the engine with a new text (or the same text again). */
   reset: (text?: string) => void;
+  /**
+   * Force the race to finish immediately (no-op if already finished). Used
+   * by multiplayer time mode where the server-issued race start time —
+   * not the first local keystroke — defines when the timer expires.
+   */
+  forceFinish: () => void;
 }
 
 export function useTypingEngine({
@@ -79,6 +85,18 @@ export function useTypingEngine({
     lastKeyAtRef.current = 0;
     forceRender();
   }, [text]);
+
+  const forceFinish = useCallback((): void => {
+    const prev = stateRef.current;
+    if (prev.finishedAt !== null) return;
+    const now = performance.now();
+    const next = finish(prev, now);
+    stateRef.current = next;
+    finishedFiredRef.current = true;
+    forceRender();
+    const snapshot = { state: next, metrics: computeMetrics(next, now) };
+    onFinish?.(snapshot);
+  }, [onFinish]);
 
   // Reset when the text prop changes.
   useEffect(() => {
@@ -182,5 +200,5 @@ export function useTypingEngine({
   const metrics = computeMetrics(state, performance.now());
   const isActive = performance.now() - lastKeyAtRef.current < 300;
 
-  return { state, metrics, isActive, reset };
+  return { state, metrics, isActive, reset, forceFinish };
 }

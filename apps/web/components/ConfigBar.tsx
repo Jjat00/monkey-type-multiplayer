@@ -1,29 +1,61 @@
 'use client';
 
+import type { RaceConfig } from '@monkey-type/shared';
 import { useSettings } from '@/lib/settings/SettingsProvider';
 import {
   TIME_SECONDS,
   WORD_COUNTS,
   type Mode,
+  type Settings,
   type TimeSeconds,
   type WordCount,
 } from '@/lib/settings/types';
 
+export interface ConfigBarProps {
+  /**
+   * Optional controlled mode — when provided together with `onChange`,
+   * the bar drives that value instead of the local settings store.
+   * Used in multiplayer rooms where the host's config is server-authoritative.
+   */
+  value?: RaceConfig;
+  onChange?: (next: RaceConfig) => void;
+  /** Visually dim and ignore clicks (e.g. non-host viewing the host's config). */
+  disabled?: boolean;
+}
+
 /**
- * Monkeytype-style horizontal config bar shown above the typing area in
- * solo-practice. Sections are separated by faint dividers; active options
- * are highlighted with the theme's main color.
+ * Monkeytype-style horizontal config bar. By default reads/writes the local
+ * Settings store (solo-practice). When `value` + `onChange` are passed, it
+ * becomes a controlled component driving an external config (multiplayer
+ * host).
  */
-export function ConfigBar() {
+export function ConfigBar({ value, onChange, disabled = false }: ConfigBarProps = {}) {
   const { settings, update } = useSettings();
-  const counts = settings.mode === 'words' ? WORD_COUNTS : TIME_SECONDS;
+  const controlled = value !== undefined && onChange !== undefined;
+  const config: RaceConfig = controlled ? value : settings;
+
+  const apply = (partial: Partial<RaceConfig>): void => {
+    if (disabled) return;
+    if (controlled) onChange({ ...config, ...partial });
+    // Safe cast: every call site below builds `partial` from the typed
+    // WORD_COUNTS / TIME_SECONDS / Mode unions, so values are within
+    // Settings's narrower domain. The wider RaceConfig signature is for
+    // controlled mode where the host config comes from the server.
+    else update(partial as Partial<Settings>);
+  };
+
+  const counts = config.mode === 'words' ? WORD_COUNTS : TIME_SECONDS;
 
   return (
-    <div className="mb-8 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 rounded-md bg-sub-alt px-4 py-2 font-mono text-xs">
+    <div
+      className={`mb-8 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 rounded-md bg-sub-alt px-4 py-2 font-mono text-xs ${
+        disabled ? 'pointer-events-none opacity-60' : ''
+      }`}
+    >
       <ConfigButton
-        active={settings.punctuation}
-        onClick={() => update({ punctuation: !settings.punctuation })}
-        ariaLabel={`Punctuation ${settings.punctuation ? 'on' : 'off'}`}
+        active={config.punctuation}
+        onClick={() => apply({ punctuation: !config.punctuation })}
+        ariaLabel={`Punctuation ${config.punctuation ? 'on' : 'off'}`}
       >
         @ punctuation
       </ConfigButton>
@@ -31,15 +63,15 @@ export function ConfigBar() {
       <Divider />
 
       <ConfigButton
-        active={settings.mode === 'words'}
-        onClick={() => update({ mode: 'words' })}
+        active={config.mode === 'words'}
+        onClick={() => apply({ mode: 'words' })}
         ariaLabel="Words mode"
       >
         A words
       </ConfigButton>
       <ConfigButton
-        active={settings.mode === 'time'}
-        onClick={() => update({ mode: 'time' })}
+        active={config.mode === 'time'}
+        onClick={() => apply({ mode: 'time' })}
         ariaLabel="Time mode"
       >
         ⏱ time
@@ -49,19 +81,17 @@ export function ConfigBar() {
 
       {counts.map((n) => {
         const active =
-          settings.mode === 'words'
-            ? settings.wordCount === n
-            : settings.timeSeconds === n;
+          config.mode === 'words' ? config.wordCount === n : config.timeSeconds === n;
         return (
           <ConfigButton
             key={n}
             active={active}
             onClick={() =>
-              settings.mode === 'words'
-                ? update({ wordCount: n as WordCount })
-                : update({ timeSeconds: n as TimeSeconds })
+              config.mode === 'words'
+                ? apply({ wordCount: n as WordCount })
+                : apply({ timeSeconds: n as TimeSeconds })
             }
-            ariaLabel={`${settings.mode === 'words' ? 'Word count' : 'Time seconds'}: ${n}`}
+            ariaLabel={`${config.mode === 'words' ? 'Word count' : 'Time seconds'}: ${n}`}
           >
             {n}
           </ConfigButton>
@@ -101,5 +131,4 @@ function Divider() {
   return <span className="h-4 w-px bg-sub/40" aria-hidden="true" />;
 }
 
-// Re-exported for convenience so consumers can import both from one place.
 export type { Mode };
