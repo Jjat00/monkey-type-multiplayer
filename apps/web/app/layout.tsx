@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { SettingsProvider } from "@/lib/settings/SettingsProvider";
 import { SoundProvider } from "@/lib/sound/SoundProvider";
@@ -18,8 +19,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "monkey-type-multiplayer",
-  description: "Multiplayer typing race inspired by Monkeytype",
+  title: "keyduelo — multiplayer typing race",
+  description:
+    "Real-time multiplayer typing race — create a room, invite friends, race to the fastest WPM.",
 };
 
 export default function RootLayout({
@@ -43,12 +45,13 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: buildNoFlashScript() }}
         />
       </head>
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-dvh flex flex-col">
         <ThemeProvider>
           <SettingsProvider>
             <SoundProvider>
               <Header />
               {children}
+              <Footer />
             </SoundProvider>
           </SettingsProvider>
         </ThemeProvider>

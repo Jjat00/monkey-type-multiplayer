@@ -17,7 +17,10 @@ export function Header() {
           className="flex items-center gap-2 text-text transition-colors hover:text-main"
         >
           <span className="text-main">⌨</span>
-          <span className="font-semibold tracking-tight">mt:multi</span>
+          <span className="font-semibold tracking-tight">
+            <span className="text-text">key</span>
+            <span className="text-main">duelo</span>
+          </span>
         </Link>
 
         <div className="flex items-center gap-6">

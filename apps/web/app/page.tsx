@@ -52,7 +52,7 @@ export default function Home() {
 
   if (text === null) {
     return (
-      <main className="flex min-h-dvh items-center justify-center text-sub font-mono">
+      <main className="flex flex-1 items-center justify-center text-sub font-mono">
         loading…
       </main>
     );
@@ -82,7 +82,7 @@ function Race({
   });
 
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center gap-10 px-6 py-10">
+    <main className="flex flex-1 flex-col items-center justify-center gap-10 px-6 py-10">
       {state.finishedAt !== null ? (
         <Results
           wpm={metrics.wpm}

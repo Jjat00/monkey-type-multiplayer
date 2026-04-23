@@ -101,7 +101,7 @@ function PlayLanding() {
   };
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col items-stretch gap-8 px-6 pb-12 pt-24 font-mono">
+    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-stretch gap-8 px-6 pb-12 pt-24 font-mono">
       {notice && (
         <div className="rounded bg-error/20 px-4 py-3 text-sm text-error">{notice}</div>
       )}

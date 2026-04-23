@@ -80,7 +80,7 @@ function LobbyPage() {
 
   if (!isValidRoomCode(code)) {
     return (
-      <main className="flex min-h-dvh flex-col items-center justify-center gap-4 px-6 font-mono text-text">
+      <main className="flex flex-1 flex-col items-center justify-center gap-4 px-6 font-mono text-text">
         <p className="text-error">invalid room code: {rawCode}</p>
         <button
           type="button"
@@ -97,7 +97,7 @@ function LobbyPage() {
   const role = conn.selfRole;
 
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-start gap-10 px-6 py-12 font-mono">
+    <main className="flex flex-1 flex-col items-center justify-start gap-10 px-6 py-12 font-mono">
       <header className="flex flex-col items-center gap-3">
         <span className="text-sm uppercase tracking-widest text-sub">
           room{role === 'spectator' && ' • spectating'}
