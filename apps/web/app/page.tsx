@@ -7,6 +7,7 @@ import { ConfigBar } from '@/components/ConfigBar';
 import { TypingArea } from '@/components/TypingArea';
 import { useSettings } from '@/lib/settings/SettingsProvider';
 import type { Settings } from '@/lib/settings/types';
+import { useSound } from '@/lib/sound/SoundProvider';
 import { useTypingEngine } from '@/lib/typing/useTypingEngine';
 
 /**
@@ -73,9 +74,11 @@ function Race({
   settings: Settings;
   onNewText: () => void;
 }) {
+  const { playKey } = useSound();
   const { state, metrics, isActive } = useTypingEngine({
     text,
     timeLimitSeconds: settings.mode === 'time' ? settings.timeSeconds : undefined,
+    onKeystroke: (correct) => playKey(!correct),
   });
 
   return (

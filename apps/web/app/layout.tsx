@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/Header";
 import { SettingsProvider } from "@/lib/settings/SettingsProvider";
+import { SoundProvider } from "@/lib/sound/SoundProvider";
 import { ThemeProvider } from "@/lib/theme/ThemeProvider";
 import { buildNoFlashScript } from "@/lib/theme/noFlashScript";
 
@@ -45,8 +46,10 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <ThemeProvider>
           <SettingsProvider>
-            <Header />
-            {children}
+            <SoundProvider>
+              <Header />
+              {children}
+            </SoundProvider>
           </SettingsProvider>
         </ThemeProvider>
       </body>

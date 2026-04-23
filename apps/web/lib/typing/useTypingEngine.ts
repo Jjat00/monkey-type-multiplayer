@@ -29,6 +29,12 @@ interface UseTypingEngineOptions {
    * that the typist won't run out of words before the timer expires.
    */
   timeLimitSeconds?: number;
+  /**
+   * Fired on every accepted printable keystroke (NOT on backspace).
+   * `correct` reflects whether the typed character matched the expected one.
+   * Used by the sound module to play feedback.
+   */
+  onKeystroke?: (correct: boolean) => void;
 }
 
 export interface ProgressSnapshot {
@@ -52,6 +58,7 @@ export function useTypingEngine({
   progressIntervalMs = 150,
   paused = false,
   timeLimitSeconds,
+  onKeystroke,
 }: UseTypingEngineOptions): HookReturn {
   /*
    * The engine state lives in a ref because we want to mutate it from a global
@@ -100,6 +107,14 @@ export function useTypingEngine({
 
       if (!next || next === prev) return;
 
+      // Fire keystroke callback BEFORE forceRender so audio latency stays
+      // minimal. Only fires on printable keys (not backspace) — wasCorrect
+      // is read from the slot we just wrote.
+      if (onKeystroke && next.position > prev.position) {
+        const status = next.status[prev.position];
+        onKeystroke(status === 'correct');
+      }
+
       stateRef.current = next;
       lastKeyAtRef.current = now;
       forceRender();
@@ -125,7 +140,7 @@ export function useTypingEngine({
 
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [paused, onProgress, onFinish, progressIntervalMs]);
+  }, [paused, onProgress, onFinish, onKeystroke, progressIntervalMs]);
 
   // Live tick for WPM updates while typing (so paused players see WPM drop).
   useEffect(() => {

@@ -30,6 +30,7 @@
 - 🛠 **Configuraciones de carrera** (solo-practice) — modo `words` (10/25/50/100) o modo `time` (15/30/60s), toggle de **puntuación**, persistencia en `localStorage`.
 - 🔄 **Rematch instantáneo** — al terminar, "next race" reinicia la carrera con un clic.
 - 🎨 **5 temas** — dracula (default), warm-dark, warm-light, nord, gruvbox-dark. Cambio en vivo + persistencia local.
+- 🔊 **Sonidos de teclas opcionales** — 4 modos (off/click/mech/pop), generados con Web Audio API (sin descargas, sin samples). Errores tienen pitch más bajo para feedback audible.
 - 📜 **Texto que scrollea** — el caret se ancla en la segunda línea del viewport y el texto fluye estilo Monkeytype, con fade en bordes.
 - ✨ **Transiciones suaves** — fade entre lobby ↔ countdown ↔ race ↔ results.
 - ♻️ **Estado autoritativo en el server** — el texto, el reloj y el ranking los decide el Durable Object, no el cliente. Imposible hacer trampa cambiando el reloj local.
@@ -120,6 +121,11 @@ monkey-type-project/
 │   │   │   ├── ConfigBar.tsx   # Toggle puntuación + mode words/time + cantidad
 │   │   │   └── TypingArea.tsx  # Texto + scroller + caret + métricas
 │   │   ├── lib/
+│   │   │   ├── sound/
+│   │   │   │   ├── types.ts           # SoundType ('off'|'click'|'mech'|'pop')
+│   │   │   │   ├── storage.ts         # localStorage
+│   │   │   │   ├── synth.ts           # Web Audio API: synth sin samples
+│   │   │   │   └── SoundProvider.tsx  # Context + useSound hook
 │   │   │   ├── settings/
 │   │   │   │   ├── types.ts           # Mode, WordCount, TimeSeconds, Settings
 │   │   │   │   ├── storage.ts         # localStorage con validación por field

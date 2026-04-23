@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import { useSound } from '@/lib/sound/SoundProvider';
+import { SOUND_TYPES, soundLabel, type SoundType } from '@/lib/sound/types';
 import { useTheme } from '@/lib/theme/ThemeProvider';
 import { THEMES, THEME_NAMES, themeLabel, type ThemeName } from '@/lib/theme/themes';
 
@@ -21,6 +23,7 @@ export function Header() {
         <div className="flex items-center gap-6">
           <NavLink href="/" label="solo" />
           <NavLink href="/play" label="multi" />
+          <SoundSwitcher />
           <ThemeSwitcher />
         </div>
       </nav>
@@ -42,6 +45,77 @@ function NavLink({ href, label }: { href: string; label: string }) {
     >
       {label}
     </Link>
+  );
+}
+
+function SoundSwitcher() {
+  const { sound, setSound } = useSound();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointer = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  const icon = sound === 'off' ? '🔇' : '🔊';
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className="flex items-center gap-2 text-sub transition-colors hover:text-text"
+      >
+        <span aria-hidden="true">{icon}</span>
+        <span className="hidden sm:inline">{soundLabel(sound)}</span>
+      </button>
+
+      {open && (
+        <ul
+          role="listbox"
+          className="absolute right-0 top-full mt-2 w-40 overflow-hidden rounded bg-sub-alt py-1 shadow-lg ring-1 ring-black/20"
+        >
+          {SOUND_TYPES.map((name: SoundType) => {
+            const selected = name === sound;
+            return (
+              <li key={name}>
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={selected}
+                  onClick={() => {
+                    setSound(name);
+                    setOpen(false);
+                  }}
+                  className={`flex w-full items-center gap-3 px-3 py-2 text-left transition-colors ${
+                    selected ? 'text-main' : 'text-text hover:bg-bg/40'
+                  }`}
+                >
+                  <span aria-hidden="true">{name === 'off' ? '🔇' : '🔊'}</span>
+                  <span>{name}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 }
 

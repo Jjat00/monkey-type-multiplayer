@@ -14,6 +14,7 @@ import {
   type UseRoomConnectionReturn,
   useRoomConnection,
 } from '@/lib/room/useRoomConnection';
+import { useSound } from '@/lib/sound/SoundProvider';
 import {
   NICKNAME_MAX_LENGTH,
   getNickname,
@@ -185,10 +186,12 @@ function RaceView({
     });
   }, [send]);
 
+  const { playKey } = useSound();
   const { state, metrics, isActive } = useTypingEngine({
     text,
     onProgress,
     onFinish,
+    onKeystroke: (correct) => playKey(!correct),
   });
 
   return (

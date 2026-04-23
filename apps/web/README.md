@@ -23,6 +23,11 @@ lib/
     types.ts            # Mode ('words'|'time'), WordCount, TimeSeconds, Settings
     storage.ts          # localStorage con validación field-by-field
     SettingsProvider.tsx # Context + useSettings hook
+  sound/
+    types.ts            # SoundType ('off'|'click'|'mech'|'pop')
+    storage.ts          # localStorage
+    synth.ts            # Web Audio API: AudioContext singleton, synths
+    SoundProvider.tsx   # Context + useSound hook (expone playKey)
   theme/
     themes.ts           # 5 paletas (dracula default, warm-dark, warm-light, nord, gruvbox-dark)
     storage.ts          # getStoredTheme, setStoredTheme, applyTheme
@@ -66,6 +71,7 @@ NEXT_PUBLIC_WORKER_WS_URL=ws://localhost:8787      # dev
 - **Sin SSR para `/play/[code]`**: el lobby es enteramente client-side (`'use client'`) porque depende de WebSockets, `localStorage` y `crypto.getRandomValues`. Hidratación en dos fases para evitar SSR/CSR mismatch del nickname.
 - **Theme system con 5 paletas** (`lib/theme/`): cambia las CSS custom properties del `<html>` en runtime; las utilidades Tailwind (`bg-bg`, `text-main`, etc.) se actualizan en vivo gracias al `@theme inline` de `globals.css`. El `noFlashScript` inline en `<head>` aplica el tema guardado antes de hidratar para evitar FOUT. Default theme: **dracula**. `nord`/`dracula`/`gruvbox` provienen de proyectos open-source independientes (atribuidos en el [LICENSE](../../LICENSE)); `warm-dark`/`warm-light` están inspirados en el tema `serika` de Monkeytype.
 - **Settings de carrera** (`lib/settings/`) en solo-practice: modo `words` (10/25/50/100) o `time` (15/30/60s) y toggle de puntuación. Mismo patrón provider+storage que el theme. El `useTypingEngine` recibe `timeLimitSeconds` opcional y schedula un `setTimeout` desde el primer keystroke. En time mode el page genera 250 palabras de buffer (suficientes para 60s a >100wpm).
+- **Sonido de teclas** (`lib/sound/`): 4 modos (off/click/mech/pop) generados con Web Audio API en `synth.ts` — sin audio files, sin descargas. AudioContext singleton inicializado lazy en el primer keystroke (browsers bloquean Audio antes de un user gesture). El `useTypingEngine` invoca `onKeystroke(correct)` que reproduce sonido normal o pitch-shifted hacia abajo si el char es incorrecto.
 - **Header fijo** (`components/Header.tsx`) overlay sobre el contenido con `bg/90 + backdrop-blur` — no participa del flow para no romper el `min-h-dvh + justify-center` de las pages.
 - **Texto que scrollea estilo Monkeytype**: el `TypingArea` mide `lineHeight` post-mount, fija el container a 3 líneas con `overflow:hidden + mask-image gradient`, y traslada el wrapper interno con `translateY` para mantener el caret en la línea 2 (anchored).
 - **Atajos**: `Tab` o `Esc` en `/` generan un texto nuevo; `Esc` también cierra el theme switcher.
