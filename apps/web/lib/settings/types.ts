@@ -20,9 +20,9 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  mode: 'words',
+  mode: 'time',
   wordCount: 25,
-  timeSeconds: 30,
+  timeSeconds: 15,
   punctuation: false,
 };
 

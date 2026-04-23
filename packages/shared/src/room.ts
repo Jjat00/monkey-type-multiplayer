@@ -20,9 +20,9 @@ export interface RaceConfig {
 }
 
 export const DEFAULT_RACE_CONFIG: RaceConfig = {
-  mode: 'words',
+  mode: 'time',
   wordCount: 25,
-  timeSeconds: 30,
+  timeSeconds: 15,
   punctuation: false,
 };
 
