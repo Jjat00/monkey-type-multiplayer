@@ -1,4 +1,4 @@
-import { ENGLISH_200 } from './wordlist.ts';
+import { COMMON_WORDS } from './wordlist.ts';
 
 export type Rng = () => number;
 
@@ -17,7 +17,7 @@ export interface GenerateOptions {
 export function pickWords(
   count: number,
   rng: Rng = Math.random,
-  source: readonly string[] = ENGLISH_200,
+  source: readonly string[] = COMMON_WORDS,
 ): string[] {
   if (source.length === 0) throw new Error('wordlist is empty');
   const out: string[] = [];
@@ -42,7 +42,7 @@ export function generateText(
   wordCount: number,
   options: GenerateOptions = {},
 ): string {
-  const { rng = Math.random, source = ENGLISH_200, punctuation = false } = options;
+  const { rng = Math.random, source = COMMON_WORDS, punctuation = false } = options;
   const words = pickWords(wordCount, rng, source);
   return punctuation ? addPunctuation(words, rng) : words.join(' ');
 }

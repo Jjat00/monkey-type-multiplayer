@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
 /*
- * Theme tokens — "serika-dark" inspired by Monkeytype's default theme.
- * These are real CSS custom properties at runtime, so swapping the theme
- * later is just rewriting these values (no rebuild needed).
+ * Theme tokens — fallback values when the inline theme script in <head>
+ * hasn't run yet (or fails). These use the "warm-dark" palette; the
+ * runtime theme switcher overrides them via document.documentElement.style.
  */
 :root {
   --color-bg: #323437;

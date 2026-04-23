@@ -18,7 +18,9 @@ export interface Palette {
 }
 
 export const THEMES = {
-  'serika-dark': {
+  // Warm dark/light: original palette inspired by Monkeytype's "serika" theme
+  // (their work is GPL-3.0; we don't ship their name or their assets).
+  'warm-dark': {
     bg: '#323437',
     text: '#d1d0c5',
     sub: '#646669',
@@ -27,7 +29,7 @@ export const THEMES = {
     error: '#ca4754',
     'error-extra': '#7e2a33',
   },
-  'serika-light': {
+  'warm-light': {
     bg: '#e1e1e3',
     text: '#323437',
     sub: '#aaaaae',

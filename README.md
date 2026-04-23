@@ -29,7 +29,7 @@
 - 📊 **Métricas estilo Monkeytype** — WPM (palabras por minuto), raw WPM, accuracy, tiempo total, ranking final.
 - 🛠 **Configuraciones de carrera** (solo-practice) — modo `words` (10/25/50/100) o modo `time` (15/30/60s), toggle de **puntuación**, persistencia en `localStorage`.
 - 🔄 **Rematch instantáneo** — al terminar, "next race" reinicia la carrera con un clic.
-- 🎨 **5 temas** — dracula (default), serika-dark, serika-light, nord, gruvbox-dark. Cambio en vivo + persistencia local.
+- 🎨 **5 temas** — dracula (default), warm-dark, warm-light, nord, gruvbox-dark. Cambio en vivo + persistencia local.
 - 📜 **Texto que scrollea** — el caret se ancla en la segunda línea del viewport y el texto fluye estilo Monkeytype, con fade en bordes.
 - ✨ **Transiciones suaves** — fade entre lobby ↔ countdown ↔ race ↔ results.
 - ♻️ **Estado autoritativo en el server** — el texto, el reloj y el ranking los decide el Durable Object, no el cliente. Imposible hacer trampa cambiando el reloj local.
@@ -125,7 +125,7 @@ monkey-type-project/
 │   │   │   │   ├── storage.ts         # localStorage con validación por field
 │   │   │   │   └── SettingsProvider.tsx # Context + useSettings hook
 │   │   │   ├── theme/
-│   │   │   │   ├── themes.ts          # 5 paletas (dracula default, serika-dark, nord…)
+│   │   │   │   ├── themes.ts          # 5 paletas (dracula default, warm-dark, nord…)
 │   │   │   │   ├── storage.ts         # localStorage + applyTheme()
 │   │   │   │   ├── ThemeProvider.tsx  # Context + useTheme hook
 │   │   │   │   └── noFlashScript.ts   # Inline script blocking en <head>
@@ -354,6 +354,17 @@ Justificación documentada en `apps/web/eslint.config.mjs`.
 
 ---
 
+## Acknowledgements
+
+Este proyecto está **inspirado** en [Monkeytype](https://github.com/monkeytypegame/monkeytype) (también GPL-3.0). No incluye código fuente de Monkeytype — el motor, los hooks, los componentes, el worker y el protocolo se escribieron desde cero. La wordlist (`packages/shared/src/wordlist.ts`) es selección y orden propios. Los temas `warm-dark` y `warm-light` están inspirados en el tema `serika` de Monkeytype pero llevan nombres y atribución distintos.
+
+Paletas de color de terceros incluidas:
+- **nord** — [Nord theme](https://www.nordtheme.com) por Sven Greb (MIT)
+- **dracula** — [Dracula theme](https://draculatheme.com) por Zeno Rocha (MIT)
+- **gruvbox** — [Gruvbox theme](https://github.com/morhetz/gruvbox) por Pavel Pertsev / morhetz (MIT)
+
+El nombre y logo de Monkeytype son marcas del proyecto Monkeytype; este repositorio no usa ninguno.
+
 ## Licencia
 
-MIT — usá, modificá, compartí.
+[GPL-3.0](LICENSE) — software libre con copyleft. Podés usar, modificar y redistribuir el código bajo los mismos términos. Cualquier derivado distribuido también debe liberarse bajo GPL-3.0 con su código fuente disponible.
