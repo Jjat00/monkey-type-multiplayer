@@ -2,7 +2,7 @@
 
 > Carrera de tipeo multijugador en tiempo real, inspirada en [Monkeytype](https://monkeytype.com). Creá una sala pública, invitá a tus amigos por link y competí por el WPM más alto sobre el mismo texto — o entrá como espectador a cualquier sala activa y mirá la carrera en vivo.
 
-**🟢 Demo en vivo:** https://type-multiplayer.vercel.app
+**🟢 Demo en vivo:** https://keyduelo.vercel.app
 **📦 Repo:** https://github.com/Jjat00/keyduelo
 
 ---
