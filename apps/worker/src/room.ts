@@ -440,10 +440,18 @@ export class Room extends DurableObject<Env> {
     if (!player || player.finishedAt !== null) return;
 
     player.finishedAt = Date.now();
-    player.timeMs = Math.max(1, Math.floor(msg.timeMs));
+    // Server-authoritative timeMs: distance from `this.startedAt` (the wall
+    // clock when the race began) to now. Ignoring the client-reported value
+    // fixes a bug where a player who never typed sent `timeMs: 1` (because
+    // their local engine had `startedAt === null`) and outranked everyone.
+    player.timeMs = this.startedAt !== null
+      ? Math.max(1, player.finishedAt - this.startedAt)
+      : Math.max(1, Math.floor(msg.timeMs));
     player.wpm = Math.max(0, Math.floor(msg.wpm));
     player.accuracy = Math.max(0, Math.min(100, msg.accuracy));
-    if (this.text !== null) player.charIndex = this.text.length;
+    // Don't auto-fill charIndex to text.length — that would lie about
+    // someone who finished via the timer (time mode) without typing it all.
+    // The last `progress` message already left charIndex at its real value.
     ws.serializeAttachment({ kind: 'player', ...player } satisfies WSAttachment);
 
     this.broadcastRoomState();
@@ -462,8 +470,13 @@ export class Room extends DurableObject<Env> {
     this.status = 'finished';
     await this.persistRoomState();
 
-    // Rank: finishers ahead of DNFs; among finishers, faster time first;
-    // among DNFs, higher wpm first as a courtesy ordering.
+    // Rank depends on the race mode:
+    // - words: finishers (charIndex === text.length) ahead of DNFs;
+    //   among finishers, faster time wins; among DNFs, higher wpm.
+    // - time: everyone is "finished" by the server timer at the same
+    //   wall-clock instant, so timeMs is meaningless for ranking. The
+    //   ranking is purely by WPM (proxy for chars typed correctly).
+    const isTimeMode = this.config.mode === 'time';
     const results: RaceResult[] = Array.from(this.players.values())
       .map((p) => ({
         playerId: p.id,
@@ -475,6 +488,11 @@ export class Room extends DurableObject<Env> {
         rank: 0,
       }))
       .sort((a, b) => {
+        if (isTimeMode) {
+          // Higher WPM first. Accuracy as tie-breaker for very close races.
+          if (b.wpm !== a.wpm) return b.wpm - a.wpm;
+          return b.accuracy - a.accuracy;
+        }
         if (a.finished !== b.finished) return a.finished ? -1 : 1;
         if (a.finished) return a.timeMs - b.timeMs;
         return b.wpm - a.wpm;
